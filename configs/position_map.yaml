@@ -1,8 +1,53 @@
-buckets:
-  CB: ["DF", "DF,MF", "MF,DF"]     # we will refine using raw FBref pos strings
-  DMCM: ["MF", "MF,DF", "DF,MF"]
-  WIDE: ["FW,MF", "MF,FW", "FW"]
+version: v2
 
 rules:
-  # simple heuristic: if pos contains "GK" -> GK bucket (excluded in v1)
   exclude_goalkeepers: true
+
+  # Split DF-only players into CB vs FB using simple explainable thresholds.
+  # Priority order:
+  #  1) If CB signals are strong -> CB
+  #  2) Else if FB signals are strong -> FB
+  #  3) Else -> default_df_bucket
+  df_split:
+    cb_if_aerial_win_pct_gte: 55.0
+    cb_if_clr_p90_gte: 4.0
+
+    fb_if_crosses_pa_p90_gte: 1.2
+    fb_if_xa_p90_gte: 0.08
+
+    default_df_bucket: "CB"
+
+  # Split DF,MF (often wingback/utility) into FB vs DMCM.
+  df_mf_split:
+    fb_if_crosses_pa_p90_gte: 1.0
+    fb_if_xa_p90_gte: 0.06
+    default_bucket: "DMCM"
+
+mappings:
+  # Normalized FBref pos strings -> base class
+  # (We still refine DF / DF,MF using heuristics.)
+  pos_exact:
+    GK: GK
+    DF: DF
+    MF: MF
+    FW: FW
+
+  pos_combo:
+    "DF,MF": DFMF
+    "MF,DF": MFDF
+    "MF,FW": MFFW
+    "FW,MF": FWMF
+    "DF,FW": DFFW
+    "FW,DF": FWDF
+
+output:
+  # Final position_bucket values produced by the mapper:
+  # GK, CB, FB, DMCM, WIDE, CF, OTHER
+  #
+  # Role alignment:
+  #   BPCB -> CB
+  #   DLP  -> DMCM
+  #   WCR  -> WIDE
+  #
+  # CF/FB/OTHER exist to prevent role leakage (not scored in v2 roles).
+  valid_buckets: ["GK", "CB", "FB", "DMCM", "WIDE", "CF", "OTHER"]

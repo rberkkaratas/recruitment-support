@@ -35,13 +35,14 @@ def main(config: str = "configs/v2.yaml"):
     clean = build_player_season_clean(
         base,
         min_minutes=cfg["filters"]["min_minutes"],
+        position_map_path=cfg["roles"]["position_map_path"],
+        exclude_goalkeepers=cfg["filters"].get("exclude_goalkeepers", True),
     )
     clean.to_parquet("data/intermediate/player_season_clean.parquet", index=False)
 
     # ids + strict grain key
     clean = add_ids(clean)
 
-    # metrics present for percentiles/scoring
     metric_cols = [
         "pass_cmp_pct", "passes_att_p90", "prog_passes_p90", "passes_final_third_p90",
         "long_pass_cmp_pct", "key_passes_p90", "xa_p90", "crosses_pa_p90",
@@ -51,7 +52,6 @@ def main(config: str = "configs/v2.yaml"):
     ]
     metric_cols = [c for c in metric_cols if c in clean.columns]
 
-    # default percentile scope feeds role scoring + v2 "safe" lens
     default_scope = cfg["scopes"]["default_percentile_scope"]
     spec = get_scope_spec(default_scope)
 
@@ -63,7 +63,6 @@ def main(config: str = "configs/v2.yaml"):
     )
     scored["pct_scope_default"] = default_scope
 
-    # role scoring unchanged
     scored = score_roles(scored, roles_yaml_path=cfg["roles"]["role_defs_path"])
 
     scored.to_parquet("data/intermediate/player_season_scored.parquet", index=False)
