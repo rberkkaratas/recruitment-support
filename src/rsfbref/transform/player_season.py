@@ -14,9 +14,12 @@ PLAYER_STAT_TYPES_V1 = [
     "misc",
 ]
 
-KEY = ["league", "season", "team", "player"]
+# v2: make merge key more unique than (league, season, team, player)
+# nation + born are present across FBref player season tables and disambiguate same-name players.
+KEY = ["league", "season", "team", "player", "nation", "born"]
 
-# Columns repeated across FBref tables; keep only once (from standard)
+# Columns repeated across FBref tables; we still prefer taking them from "standard"
+# but we must NOT drop those that are part of KEY, otherwise we can't merge.
 ENTITY_COLS = {"nation", "pos", "age", "born", "90s"}
 
 
@@ -39,12 +42,26 @@ def _prefix_non_key_cols(df: pd.DataFrame, prefix: str) -> pd.DataFrame:
     return df.rename(columns=rename)
 
 
+def _dedupe_on_key(df: pd.DataFrame, st: str) -> pd.DataFrame:
+    # Defensive: FBref tables can include duplicate rows for the same KEY.
+    # Keep first; if you want to be stricter later, we can add diagnostics.
+    before = len(df)
+    df2 = df.drop_duplicates(subset=KEY, keep="first").copy()
+    after = len(df2)
+    if after < before:
+        print(f"[dedupe] {st}: dropped {before - after} duplicate rows on KEY={KEY}")
+    return df2
+
+
 def build_player_season_base(bundle: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
-    Merge all player-season stat tables on (league, season, team, player).
-    Keep entity columns only once, and prefix other stat columns by stat_type.
+    Merge all player-season stat tables on v2 KEY.
+    Keep entity columns only once (from standard), and prefix other stat columns by stat_type.
     """
     base = bundle["standard"].copy()
+
+    # Ensure base is unique on KEY
+    base = _dedupe_on_key(base, "standard")
 
     for st, df in bundle.items():
         if st == "standard":
@@ -52,8 +69,12 @@ def build_player_season_base(bundle: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
         df2 = df.copy()
 
-        # Drop overlapping entity columns from non-standard tables
-        drop_cols = [c for c in df2.columns if c in ENTITY_COLS]
+        # Dedupe on KEY before any merging
+        df2 = _dedupe_on_key(df2, st)
+
+        # Drop overlapping entity columns from non-standard tables,
+        # but DO NOT drop any columns that are part of KEY.
+        drop_cols = [c for c in df2.columns if (c in ENTITY_COLS and c not in KEY)]
         df2 = df2.drop(columns=drop_cols, errors="ignore")
 
         # Prefix remaining non-key columns

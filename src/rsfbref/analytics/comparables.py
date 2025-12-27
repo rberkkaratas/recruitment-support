@@ -45,7 +45,6 @@ ROLE_FEATURES: dict[str, list[str]] = {
 }
 
 # Which percentile features should be inverted (higher is worse).
-# This affects BOTH similarity reasons and the distance space.
 INVERT_PCT_FEATURES: set[str] = {
     "pct_errors_p90",
     "pct_fouls_p90",
@@ -78,43 +77,55 @@ def build_fact_comparables(
     df: pd.DataFrame,
     role_id: str,
     top_n: int = 10,
+    comparison_scope: str = "league_season",
+    pct_scope: str = "league_season",
 ) -> pd.DataFrame:
     """
     Build comparables within the eligible pool for a given role.
 
     Requirements:
-      - df contains: player_id, team_id, league, season
+      - df contains: player_team_season_id, player_id, team_id, league, season
       - df contains: score_{role_id} (notna marks eligibility)
       - df contains percentile columns used in ROLE_FEATURES[role_id]
+        (pct_scope indicates which lens they represent; script ensures they exist)
 
     Output schema (Tableau-friendly):
-      anchor_key, anchor_player_id, anchor_team_id, anchor_season,
-      comparable_player_id, comparable_team_id, comparable_season,
-      role_id, distance, rank, reason_1..reason_3
+      comparison_scope, pct_scope, role_id,
+      anchor_pts_id, anchor_player_id, anchor_team_id, anchor_league, anchor_season,
+      comp_pts_id, comp_player_id, comp_team_id, comp_league, comp_season,
+      different_league, different_season,
+      distance, rank, reason_1..reason_3
     """
     score_col = f"score_{role_id}"
-    if score_col not in df.columns:
+    required = {"player_team_season_id", "player_id", "team_id", "league", "season"}
+
+    if score_col not in df.columns or not required.issubset(df.columns):
         return pd.DataFrame(columns=[
-            "anchor_key", "anchor_player_id", "anchor_team_id", "anchor_season",
-            "comparable_player_id", "comparable_team_id", "comparable_season",
-            "role_id", "distance", "rank", "reason_1", "reason_2", "reason_3",
+            "comparison_scope", "pct_scope", "role_id",
+            "anchor_pts_id", "anchor_player_id", "anchor_team_id", "anchor_league", "anchor_season",
+            "comp_pts_id", "comp_player_id", "comp_team_id", "comp_league", "comp_season",
+            "different_league", "different_season",
+            "distance", "rank", "reason_1", "reason_2", "reason_3",
         ])
 
     feats = [f for f in ROLE_FEATURES.get(role_id, []) if f in df.columns]
-    required_id_cols = {"player_id", "team_id", "season"}
-    if not feats or not required_id_cols.issubset(df.columns):
+    if not feats:
         return pd.DataFrame(columns=[
-            "anchor_key", "anchor_player_id", "anchor_team_id", "anchor_season",
-            "comparable_player_id", "comparable_team_id", "comparable_season",
-            "role_id", "distance", "rank", "reason_1", "reason_2", "reason_3",
+            "comparison_scope", "pct_scope", "role_id",
+            "anchor_pts_id", "anchor_player_id", "anchor_team_id", "anchor_league", "anchor_season",
+            "comp_pts_id", "comp_player_id", "comp_team_id", "comp_league", "comp_season",
+            "different_league", "different_season",
+            "distance", "rank", "reason_1", "reason_2", "reason_3",
         ])
 
     pool = df[df[score_col].notna()].copy()
     if len(pool) < 2:
         return pd.DataFrame(columns=[
-            "anchor_key", "anchor_player_id", "anchor_team_id", "anchor_season",
-            "comparable_player_id", "comparable_team_id", "comparable_season",
-            "role_id", "distance", "rank", "reason_1", "reason_2", "reason_3",
+            "comparison_scope", "pct_scope", "role_id",
+            "anchor_pts_id", "anchor_player_id", "anchor_team_id", "anchor_league", "anchor_season",
+            "comp_pts_id", "comp_player_id", "comp_team_id", "comp_league", "comp_season",
+            "different_league", "different_season",
+            "distance", "rank", "reason_1", "reason_2", "reason_3",
         ])
 
     eff_top_n = min(int(top_n), len(pool) - 1)
@@ -133,32 +144,39 @@ def build_fact_comparables(
     Xs = scaler.fit_transform(X)
     D = cosine_distances(Xs, Xs)
 
-    anchors = pool[["player_id", "team_id", "season"]].astype(str).agg("|".join, axis=1).to_numpy()
-
     rows: list[dict] = []
-    for i, anchor_key in enumerate(anchors):
-        anchor_pid = pool.iloc[i]["player_id"]
-        anchor_tid = pool.iloc[i]["team_id"]
-        anchor_season = pool.iloc[i]["season"]
-
+    for i in range(len(pool)):
+        anchor = pool.iloc[i]
         order = np.argsort(D[i])
         order = order[order != i][:eff_top_n]
 
         anchor_vec = Xs[i]
         for rank, j in enumerate(order, start=1):
+            comp = pool.iloc[j]
             reasons = _top_reason_codes(anchor_vec, Xs[j], feats, k=3)
 
             rows.append({
-                "anchor_key": anchor_key,
-                "anchor_player_id": anchor_pid,
-                "anchor_team_id": anchor_tid,
-                "anchor_season": anchor_season,
-                "comparable_player_id": pool.iloc[j]["player_id"],
-                "comparable_team_id": pool.iloc[j]["team_id"],
-                "comparable_season": pool.iloc[j]["season"],
+                "comparison_scope": comparison_scope,
+                "pct_scope": pct_scope,
                 "role_id": role_id,
+
+                "anchor_pts_id": anchor["player_team_season_id"],
+                "anchor_player_id": anchor["player_id"],
+                "anchor_team_id": anchor["team_id"],
+                "anchor_league": anchor["league"],
+                "anchor_season": anchor["season"],
+
+                "comp_pts_id": comp["player_team_season_id"],
+                "comp_player_id": comp["player_id"],
+                "comp_team_id": comp["team_id"],
+                "comp_league": comp["league"],
+                "comp_season": comp["season"],
+
+                "different_league": bool(anchor["league"] != comp["league"]),
+                "different_season": bool(anchor["season"] != comp["season"]),
+
                 "distance": float(D[i, j]),
-                "rank": rank,
+                "rank": int(rank),
                 "reason_1": reasons[0] if len(reasons) > 0 else None,
                 "reason_2": reasons[1] if len(reasons) > 1 else None,
                 "reason_3": reasons[2] if len(reasons) > 2 else None,

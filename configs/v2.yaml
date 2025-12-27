@@ -1,0 +1,40 @@
+project:
+  name: recruitment-support-fbref
+  version: v2
+
+fbref:
+  leagues:
+    - "Big 5 European Leagues Combined"
+    - "ESP-La Liga"
+    - "ITA-Serie A"
+    - "GER-Bundesliga"
+    - "FRA-Ligue 1"
+  seasons: ["2324", "2425"]
+  data_dir: "data/soccerdata_cache/FBref"
+  no_cache: false
+  no_store: false
+
+filters:
+  min_minutes: 900
+  exclude_goalkeepers: true
+
+scopes:
+  # which percentiles feed role scoring + similarity by default
+  default_percentile_scope: "league_season"
+
+  # which percentile marts we compute for Tableau lens switching
+  percentile_scopes:
+    - "league_season"
+    - "league_multi_season"
+    - "multi_league_season"
+    - "multi_league_multi_season"
+
+  # controls how comparables/shortlists compute percentiles/features
+  comparison_scope: "league_season"
+
+roles:
+  role_defs_path: "configs/roles_v1.yaml"
+  position_map_path: "configs/position_map.yaml"
+
+exports:
+  out_dir: "data/exports/tableau"
