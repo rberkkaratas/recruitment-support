@@ -1,0 +1,8 @@
+buckets:
+  CB: ["DF", "DF,MF", "MF,DF"]     # we will refine using raw FBref pos strings
+  DMCM: ["MF", "MF,DF", "DF,MF"]
+  WIDE: ["FW,MF", "MF,FW", "FW"]
+
+rules:
+  # simple heuristic: if pos contains "GK" -> GK bucket (excluded in v1)
+  exclude_goalkeepers: true

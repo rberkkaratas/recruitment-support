@@ -1,0 +1,22 @@
+project:
+  name: recruitment-support-fbref
+  version: v1
+
+fbref:
+  leagues: ["ENG-Premier League"]
+  seasons: ["2425"]   
+  data_dir: "data/soccerdata_cache/FBref"
+  no_cache: false
+  no_store: false
+
+filters:
+  min_minutes: 900
+  league_scope: "ENG-Premier League"
+  same_league_only: true
+
+roles:
+  role_defs_path: "configs/roles_v1.yaml"
+  position_map_path: "configs/position_map.yaml"
+
+exports:
+  out_dir: "data/exports/tableau"

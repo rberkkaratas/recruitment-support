@@ -1,0 +1,64 @@
+roles:
+  - role_id: BPCB
+    role_name: Ball-Playing CB
+    position_bucket: CB
+    must_have:
+      min_minutes: 630
+      pass_cmp_pct_min: 85
+      prog_passes_p90_min: 3.0
+      aerial_win_pct_min: 55
+    weights:
+      prog_passes_p90: 0.16
+      passes_final_third_p90: 0.10
+      long_pass_cmp_p90_or_pct: 0.08
+      pass_cmp_pct: 0.12
+      passes_att_p90: 0.06
+      prog_carries_p90: 0.06
+      tackles_interceptions_p90: 0.14
+      clearances_p90: 0.06
+      aerial_win_pct_or_won_p90: 0.12
+      errors_or_dispossessed_neg: 0.10
+    negative_metrics: ["errors_or_dispossessed_neg"]
+
+  - role_id: DLP
+    role_name: Deep-Lying Playmaker
+    position_bucket: DMCM
+    must_have:
+      min_minutes: 900
+      passes_att_p90_min: 40
+      prog_passes_p90_min: 5
+      pass_cmp_pct_min: 85
+    weights:
+      passes_att_p90: 0.10
+      pass_cmp_pct: 0.10
+      prog_passes_p90: 0.16
+      passes_final_third_p90: 0.12
+      through_balls_p90: 0.06
+      key_passes_p90: 0.08
+      sca_p90: 0.10
+      long_pass_cmp_p90_or_pct: 0.06
+      prog_carries_p90: 0.08
+      tackles_interceptions_p90: 0.08
+      fouls_committed_neg: 0.06
+    negative_metrics: ["fouls_committed_neg"]
+
+  - role_id: WCR
+    role_name: Winger Creator
+    position_bucket: WIDE
+    must_have:
+      min_minutes: 900
+      prog_carries_p90_min: 4
+      succ_takeons_p90_min: 1.0
+      xa_p90_min: 0.07
+    weights:
+      prog_carries_p90: 0.14
+      carries_pa_p90: 0.10
+      succ_takeons_p90: 0.12
+      takeon_succ_pct: 0.06
+      key_passes_p90: 0.10
+      xa_p90: 0.14
+      sca_p90: 0.10
+      crosses_pa_p90: 0.08
+      npxg_p90: 0.06
+      dispossessed_miscontrols_neg: 0.10
+    negative_metrics: ["dispossessed_miscontrols_neg"]
