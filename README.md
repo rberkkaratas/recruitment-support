@@ -393,12 +393,3 @@ Run tests with pytest:
 ```bash
 pytest tests/
 ```
-
-## License
-
-[Specify your license here]
-
-## Contributing
-
-[Add contribution guidelines if applicable]
-
