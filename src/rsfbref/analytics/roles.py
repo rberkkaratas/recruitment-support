@@ -1,9 +1,10 @@
 from __future__ import annotations
+from pathlib import Path
 import yaml
 import pandas as pd
 
 def load_roles(path: str) -> list[dict]:
-    return yaml.safe_load(open(path, "r", encoding="utf-8"))["roles"]
+    return yaml.safe_load(Path(path).read_text(encoding="utf-8"))["roles"]
 
 def apply_must_haves(df: pd.DataFrame, role: dict) -> pd.Series:
     mh = role.get("must_have", {})
@@ -64,6 +65,12 @@ def score_roles(df: pd.DataFrame, roles_yaml_path: str) -> pd.DataFrame:
                 feat = "mis_dis_p90"
             elif k == "fouls_committed_neg":
                 feat = "fouls_p90"
+            elif k == "tackles_interceptions_p90":
+                feat = "tkl_int_p90"
+            elif k == "clearances_p90":
+                feat = "clr_p90"
+            elif k == "npxg_p90":
+                feat = "Per_90_Minutes_npxG"
             else:
                 feat = k
 
